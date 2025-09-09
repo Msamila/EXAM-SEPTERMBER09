@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./css/site.css" />
+    <title>Table</title>
+  </head>
+  <body>
+    <div class="header">
+      <div class="toggle">
+        <a id="toggle-nav"><i class="fa fa-navicon cog"></i></a>
+      </div>
+    </div>
+    <div class="container">
+      <div class="sidebar" id="sidebar">
+        <a href="dashboard.html"><i class="fa fa-home"></i> Dashboard</a>
+        <a href="form.html"><i class="fa fa-shopping-cart"></i> Forms</a>
+        <a href="tables.html"><i class="fa fa-shopping-bag"></i> Tables</a>
+      </div>
+      <div class="content">
+        <div class="left">
+          <h3>Product Records</h3>
+          <div class="section-container">
+            <div class="section-header">Details of avalialble products</div>
+            <div class="section-content">
+              <!-- section content-->
+              <h4>Implement here..</h4>
+            </div>
+          </div>
+        </div>
+        <div class="right"></div>
+      </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+      $(function () {
+        let products = [],
+          productToDelete = null;
+        const sectionContent = $(".section-content");
+        const deleteModal = $("#deleteModal");
+        const editFormContainer = $("#editFormContainer");
+
+        // Show loader animation
+        sectionContent.html('<div class="loader">Loading products...</div>');
+
+        setTimeout(loadProducts, 2000); // 2-second animation delay
+
+        function loadProducts() {
+          fetch("http://localhost:3000/products")
+            .then((res) => res.json())
+            .then((data) => {
+              products = data;
+              renderTable();
+            })
+            .catch(() => sectionContent.html("<p>Error loading products.</p>"));
+        }
+
+        function renderTable() {
+          let table = `<table><thead><tr>
+            <th>Name</th><th>Price</th><th>Quantity</th><th>Description</th><th>Actions</th>
+          </tr></thead><tbody>`;
+          products.forEach((p) => {
+            table += `<tr data-id="${p.id}">
+              <td>${p.name}</td>
+              <td>$${p.price}</td>
+              <td>${p.quantity}</td>
+              <td>${p.description}</td>
+              <td>
+                <button class="edit-btn" data-id="${p.id}">Edit</button>
+                <button class="delete-btn" data-id="${p.id}">Delete</button>
+              </td>
+            </tr>`;
+          });
+          table += "</tbody></table>";
+          sectionContent.html(table);
+
+          $(".edit-btn").click((e) => editProduct($(e.target).data("id")));
+          $(".delete-btn").click((e) =>
+            showDeleteModal($(e.target).data("id"))
+          );
+        }
+
+        function showDeleteModal(id) {
+          productToDelete = products.find((p) => p.id == id);
+          if (productToDelete) {
+            $("#deleteModal p").text(
+              `Are you sure you want to delete "${productToDelete.name}"?`
+            );
+            deleteModal.show();
+          }
+        }
+
+        function deleteProduct(id) {
+          fetch(`http://localhost:3000/products/${id}`, { method: "DELETE" })
+            .then((r) => {
+              if (r.ok) {
+                products = products.filter((p) => p.id != id);
+                renderTable();
+                deleteModal.hide();
+              } else alert("Error deleting product");
+            })
+            .catch(() => alert("Error deleting product"));
+        }
+
+        function editProduct(id) {
+          const p = products.find((x) => x.id == id);
+          if (!p) return;
+          $("#editProductId").val(p.id);
+          $("#editName").val(p.name);
+          $("#editPrice").val(p.price);
+          $("#editQuantity").val(p.quantity);
+          $("#editDescription").val(p.description);
+          editFormContainer.show();
+          $("html,body").animate(
+            { scrollTop: editFormContainer.offset().top },
+            500
+          );
+        }
+
+        $("#editProductForm").submit(function (e) {
+          e.preventDefault();
+          const id = $("#editProductId").val();
+          const updated = {
+            name: $("#editName").val(),
+            price: parseFloat($("#editPrice").val()),
+            quantity: parseInt($("#editQuantity").val()),
+            description: $("#editDescription").val(),
+          };
+          fetch(`http://localhost:3000/products/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updated),
+          })
+            .then((r) => {
+              if (r.ok) {
+                const index = products.findIndex((p) => p.id == id);
+                if (index != -1)
+                  products[index] = { ...products[index], ...updated };
+                renderTable();
+                editFormContainer.hide();
+                alert("Product updated successfully!");
+              } else alert("Error updating product");
+            })
+            .catch(() => alert("Error updating product"));
+        });
+
+        $("#cancelEdit").click(() => editFormContainer.hide());
+        $(".close, .btn-cancel").click(() => deleteModal.hide());
+        $(".btn-confirm").click(() => deleteProduct(productToDelete.id));
+        $(window).click((e) => {
+          if (e.target == deleteModal[0]) deleteModal.hide();
+        });
+      });
+    </script>
+  </body>
+</html>
