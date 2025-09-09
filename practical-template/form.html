@@ -34,15 +34,17 @@
           <div class="section-container">
             <div class="section-header">Enter product details</div>
             <div class="section-content">
-              <form action="">
+              <form action="" id="frm">
                 <label class="label" for="product">Product Name</label>
-                <input type="text" /><br />
+                <input type="text" id="products" /><br />
                 <label class="label" for="price">Price</label>
-                <input type="number" /><br />
+                <input type="number" id="price" /><br />
                 <label class="label" for="category">Quantity</label>
                 <input name="quantity" id="quantity" type="number" />
-                <label class="label" for="description">Description</label>
-                <textarea rows="6" name="description" id=""></textarea>
+                <label class="label" for="description" id="description"
+                  >Description</label
+                >
+                <textarea rows="6" name="description"></textarea>
                 <button class="form-button" id="save">Save</button>
               </form>
             </div>
@@ -54,14 +56,14 @@
     <div id="myModal" class="modal">
       <div class="modal-content">
         <span class="close" id="span">&times;</span>
-        <h3>Message</h3>
-        <p>Edit me for success and error messages</p>
+        <h3 id=" modal-title">Message</h3>
+        <p id="modal-message">Edit me for success and error messages</p>
       </div>
     </div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-      $("document").ready(() => {
-
+      $(document).ready(() => {
         $("#save").click((e) => {
           e.preventDefault();
           $("#myModal").css("display", "block");
@@ -71,6 +73,101 @@
           e.preventDefault();
           $("#myModal").css("display", "none");
         });
+      });
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById("frm");
+        const modal = document.getElementById("myModal");
+        const modalTitle = document.getElementById("modal-title");
+        const modalMsg = document.getElementById("modal-message");
+        const closeBtn = document.getElementById("span");
+
+        // Validating
+        const validators = {
+          products: (v) => v.length >= 5 && v.length <= 50,
+          price: (v) => !isNaN(v) && v > 0,
+          quantity: (v) => !isNaN(v) && v > 0,
+          description: (v) => v.length >= 5 && v.length <= 200,
+        };
+
+        function validateField(field) {
+          const value = field.value.trim();
+          const isValid = validators[field.id](value);
+          if (!isValid) {
+            field.classList.add("input-error");
+          } else {
+            field.classList.remove("input-error");
+          }
+          return isValid;
+        }
+
+        function validateForm() {
+          let valid = true;
+          ["products", "price", "quantity", "description"].forEach((id) => {
+            const field = document.getElementById(id);
+            if (field && !validateField(field)) valid = false;
+          });
+          return valid;
+        }
+
+        async function submitForm() {
+          try {
+            const formData = {
+              name: document.getElementById("products").value.trim(),
+              price: parseFloat(document.getElementById("price").value),
+              quantity: parseFloat(document.getElementById("quantity").value),
+              description: document.getElementById("description").value.trim(),
+            };
+
+            const res = await fetch("http://localhost:3000/products/", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(formData),
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              modalTitle.textContent = "Success";
+              modalMsg.textContent = "Product saved successfully!";
+              form.reset();
+            } else {
+              modalTitle.textContent = "Error";
+              modalMsg.textContent =
+                "Failed to save product. Status: " + res.status;
+            }
+          } catch (err) {
+            modalTitle.textContent = "Error";
+            modalMsg.textContent = "Something went wrong: " + err.message;
+          } finally {
+            modal.style.display = "block";
+          }
+        }
+
+        ["products", "price", "quantity", "description"].forEach((id) => {
+          const field = document.getElementById(id);
+          if (field) {
+            field.addEventListener("input", (e) => validateField(e.target));
+          }
+        });
+
+        //handling  Form submit
+        if (form) {
+          form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (validateForm()) {
+              await submitForm();
+            } else {
+              modalTitle.textContent = "Validation Error";
+              modalMsg.textContent = "Please correct the highlighted fields.";
+              modal.style.display = "block";
+            }
+          });
+        }
+
+        if (closeBtn) closeBtn.onclick = () => (modal.style.display = "none");
+        window.onclick = (e) => {
+          if (e.target === modal) modal.style.display = "none";
+        };
       });
     </script>
   </body>
